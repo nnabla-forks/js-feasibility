@@ -9,6 +9,7 @@ let score = 0;
 let misses = 0;
 const maxMisses = 100;
 let circles = [];
+let effects = []; // New array for effects
 let gameOver = false;
 
 // Get references to UI elements
@@ -52,6 +53,19 @@ function gameLoop() {
     }
   }
 
+  // Update and draw effects
+  for (let i = effects.length - 1; i >= 0; i--) {
+    const effect = effects[i];
+    effect.update();
+    effect.draw();
+    if (effect.life <= 0) {
+      if (effect.onComplete) {
+        effect.onComplete();
+      }
+      effects.splice(i, 1);
+    }
+  }
+
   // Draw score and misses
   ctx.fillStyle = '#000';
   ctx.font = '24px sans-serif';
@@ -92,6 +106,33 @@ class Circle {
   }
 }
 
+// New Effect class
+class Effect {
+  constructor(x, y, radius, color, onComplete) {
+    this.x = x;
+    this.y = y;
+    this.radius = radius;
+    this.color = color;
+    this.life = 60; // frames
+    this.maxLife = 60;
+    this.onComplete = onComplete; // Callback function
+  }
+
+  update() {
+    this.life--;
+  }
+
+  draw() {
+    ctx.save();
+    ctx.globalAlpha = this.life / this.maxLife;
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.radius * (1 + (this.maxLife - this.life) / this.maxLife), 0, Math.PI * 2);
+    ctx.fillStyle = this.color;
+    ctx.fill();
+    ctx.restore();
+  }
+}
+
 function spawnCircle(x, y, number, vx, vy) {
   const num = number || Math.floor(Math.random() * 99) + 2;
   const radius = 25 + num / 2;
@@ -114,23 +155,29 @@ canvas.addEventListener('mousemove', (e) => {
     const distance = Math.sqrt(dx * dx + dy * dy);
 
     if (distance < circle.radius) {
-      if (isPrime(circle.number)) {
-        misses++;
-        if (misses >= maxMisses) {
-          gameOver = true;
+      // Define the action to take after the effect completes
+      const onEffectComplete = () => {
+        if (isPrime(circle.number)) {
+          misses++;
+          if (misses >= maxMisses) {
+            gameOver = true;
+          }
+        } else {
+          const factors = getTwoLargestFactors(circle.number);
+          if (factors) {
+            const [factor1, factor2] = factors;
+            spawnCircle(circle.x, circle.y, factor1, -2, -currentInitialVelocity / 2);
+            spawnCircle(circle.x, circle.y, factor2, 2, -currentInitialVelocity / 2);
+            score += circle.number;
+          }
         }
-        circles.splice(i, 1);
-      } else {
-        const factors = getTwoLargestFactors(circle.number);
-        if (factors) {
-          const [factor1, factor2] = factors;
-          // Spawn two new circles from the split
-          spawnCircle(circle.x, circle.y, factor1, -2, -currentInitialVelocity / 2);
-          spawnCircle(circle.x, circle.y, factor2, 2, -currentInitialVelocity / 2);
-          score += circle.number;
-        }
-        circles.splice(i, 1);
-      }
+      };
+
+      // Create an effect at the circle's position with a callback
+      effects.push(new Effect(circle.x, circle.y, circle.radius, isPrime(circle.number) ? 'red' : 'blue', onEffectComplete));
+
+      // Remove the original circle immediately
+      circles.splice(i, 1);
     }
   }
 });
@@ -144,4 +191,18 @@ initialVelocitySlider.addEventListener('input', (e) => {
   currentInitialVelocity = parseInt(e.target.value);
 });
 
-gameLoop();
+let gameStarted = false;
+
+const startButton = document.getElementById('startButton');
+startButton.addEventListener('click', () => {
+  if (!gameStarted) {
+    gameStarted = true;
+    gameLoop();
+    startButton.style.display = 'none'; // Hide the button once game starts
+  }
+});
+
+// Modify gameLoop to only run if gameStarted is true
+function gameLoop() {
+  if (!gameStarted) return; // Add this line
+  // ... rest of your gameLoop function
