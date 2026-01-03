@@ -10,3 +10,6 @@
 ## Phase 2: Tiling Logic (Web App) <!-- id: 5 -->
 - [x] Implement Wedge placement (Wedge Mode) <!-- id: 6 -->
 - [x] Implement Front Checking / Full Tiling (including Offset Mode fix) <!-- id: 7 -->
+
+## Phase 3: Visual Refinements
+- [x] Implement same-depth highlight in Tiling Mode <!-- id: 8 -->

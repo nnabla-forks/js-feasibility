@@ -31,6 +31,26 @@
                     </select>
                 </div>
 
+                <!-- Visibility Toggles -->
+                <div class="control-group" id="group-toggles"
+                    style="margin-top: 10px; border-top: 1px solid #30363d; padding-top: 10px;">
+                    <div id="toggle-edges-container">
+                        <label>
+                            <input type="checkbox" id="show-edges" checked> Show Edge #
+                        </label>
+                    </div>
+                    <div id="toggle-wedges-container" style="display:none;">
+                        <label>
+                            <input type="checkbox" id="show-wedges" checked> Show Wedge #
+                        </label>
+                    </div>
+                    <div id="toggle-tiles-container" style="display:none;">
+                        <label>
+                            <input type="checkbox" id="show-tiles" checked> Show Tile #
+                        </label>
+                    </div>
+                </div>
+
                 <div class="control-group" id="group-rows" style="display: none;">
                     <label for="param-rows">Rows (Depth)</label>
                     <input type="number" id="param-rows" value="5" min="1" step="1">
@@ -57,12 +77,6 @@
                         Offset Mode (n = 2(tk-m))
                     </label>
                 </div>
-
-                <div class="control-group">
-                    <label for="param-c">C (未使用)</label>
-                    <input type="number" id="param-c" value="1" step="1">
-                </div>
-
 
             </div>
 

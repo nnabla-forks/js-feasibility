@@ -26,8 +26,14 @@ class Renderer {
 
         // Hover state
         this.hoveredWedgeIndex = null;
+        this.hoveredDepth = null;
         this.mouseX = 0;
         this.mouseY = 0;
+
+        // Visibility flags
+        this.showEdges = true;
+        this.showWedges = true;
+        this.showTiles = true;
     }
 
     initEvents() {
@@ -89,8 +95,42 @@ class Renderer {
     setDisplayData(polygons, mode = 'prototile') {
         this.polygons = polygons;
         this.mode = mode;
-        this.calculateWedgeCenters();
+        if (mode === 'tiling') {
+            this.calculateWedgeCenters();
+            this.calculateTileCenters();
+        } else if (mode === 'wedge') {
+            this.calculateTileCenters();
+        }
         this.draw();
+    }
+
+    setOptions(options) {
+        if (typeof options.showEdges !== 'undefined') this.showEdges = options.showEdges;
+        if (typeof options.showWedges !== 'undefined') this.showWedges = options.showWedges;
+        if (typeof options.showTiles !== 'undefined') this.showTiles = options.showTiles;
+        this.draw();
+    }
+
+    calculateTileCenters() {
+        this.tileLabels = [];
+        if (!this.polygons) return;
+
+        this.polygons.forEach(poly => {
+            if (poly.meta && typeof poly.meta.tileIndex !== 'undefined') {
+                // Centroid
+                let sumX = 0, sumY = 0;
+                poly.path.forEach(p => {
+                    sumX += p.x;
+                    sumY += p.y;
+                });
+
+                this.tileLabels.push({
+                    x: sumX / poly.path.length,
+                    y: sumY / poly.path.length,
+                    text: poly.meta.tileIndex.toString()
+                });
+            }
+        });
     }
 
     calculateWedgeCenters() {
@@ -243,7 +283,7 @@ class Renderer {
                 if (!poly.path || poly.path.length === 0) return;
 
                 // 1. Edge Indices (Only in Prototile Mode)
-                if (this.mode === 'prototile') {
+                if (this.mode === 'prototile' && this.showEdges) {
                     this.ctx.fillStyle = '#ffffff';
                     this.ctx.font = `${14 / this.scale}px sans-serif`;
                     this.ctx.textAlign = 'center';
@@ -271,10 +311,35 @@ class Renderer {
             this.ctx.translate(this.offsetX, this.offsetY);
             this.ctx.scale(this.scale, this.scale);
 
-            this.ctx.fillStyle = 'rgba(128, 128, 128, 0.5)';
+            this.ctx.fillStyle = 'rgba(0, 0, 192, 0.5)';
 
             this.polygons.forEach(poly => {
                 if (poly.meta && poly.meta.wedgeIndex === this.hoveredWedgeIndex) {
+                    this.ctx.beginPath();
+                    if (poly.path.length > 0) {
+                        this.ctx.moveTo(poly.path[0].x, poly.path[0].y);
+                        for (let i = 1; i < poly.path.length; i++) {
+                            this.ctx.lineTo(poly.path[i].x, poly.path[i].y);
+                        }
+                        this.ctx.closePath();
+                    }
+                    this.ctx.fill();
+                }
+            });
+
+            this.ctx.restore();
+        }
+
+        // 3. Depth Overlay (Tiling Mode - Red 70%)
+        if (this.mode === 'tiling' && this.hoveredDepth !== null && this.polygons) {
+            this.ctx.save();
+            this.ctx.translate(this.offsetX, this.offsetY);
+            this.ctx.scale(this.scale, this.scale);
+
+            this.ctx.fillStyle = 'rgba(192, 0, 0, 0.5)';
+
+            this.polygons.forEach(poly => {
+                if (poly.meta && typeof poly.meta.r !== 'undefined' && poly.meta.r === this.hoveredDepth) {
                     this.ctx.beginPath();
                     if (poly.path.length > 0) {
                         this.ctx.moveTo(poly.path[0].x, poly.path[0].y);
@@ -301,7 +366,7 @@ class Renderer {
         this.ctx.textBaseline = 'middle';
 
         // Tiling Wedge Indices
-        if (this.mode === 'tiling' && this.wedgeCenters) {
+        if (this.mode === 'tiling' && this.wedgeCenters && this.showWedges) {
             for (const idx in this.wedgeCenters) {
                 const center = this.wedgeCenters[idx];
                 // Simple shadow for readability
@@ -311,6 +376,19 @@ class Renderer {
                 this.ctx.fillText(idx, center.x, center.y);
                 this.ctx.shadowBlur = 0;
             }
+        }
+
+        // Tile Indices (Wedge & Tiling Mode)
+        if ((this.mode === 'wedge' || this.mode === 'tiling') && this.tileLabels && this.showTiles) {
+            this.ctx.font = `bold ${12 / this.scale}px sans-serif`;
+            this.tileLabels.forEach(label => {
+                // Simple shadow
+                this.ctx.shadowColor = "black";
+                this.ctx.shadowBlur = 3;
+                this.ctx.fillStyle = '#ffffff';
+                this.ctx.fillText(label.text, label.x, label.y);
+                this.ctx.shadowBlur = 0;
+            });
         }
 
         this.ctx.restore();
@@ -327,18 +405,31 @@ class Renderer {
 
         // Find hovered polygon
         let foundIndex = null;
+        let foundDepth = null;
 
         // Iterate in reverse render order (top first) if overlapping, though here tiles shouldn't overlap much
         for (let i = this.polygons.length - 1; i >= 0; i--) {
             const poly = this.polygons[i];
             if (this.isPointInPoly(worldX, worldY, poly.path)) {
                 foundIndex = poly.meta ? poly.meta.wedgeIndex : null;
+                if (poly.meta && typeof poly.meta.r !== 'undefined') {
+                    foundDepth = poly.meta.r;
+                }
                 break;
             }
         }
 
+        let needsRedraw = false;
         if (this.hoveredWedgeIndex !== foundIndex) {
             this.hoveredWedgeIndex = foundIndex;
+            needsRedraw = true;
+        }
+        if (this.hoveredDepth !== foundDepth) {
+            this.hoveredDepth = foundDepth;
+            needsRedraw = true;
+        }
+
+        if (needsRedraw) {
             this.draw();
         }
     }
@@ -521,6 +612,7 @@ class KrinkleGenerator {
             'rgba(100, 200, 100, 0.6)'
         ];
 
+        let tileIndex = 0;
         for (let r = 0; r < rows; r++) {
             for (let c = 0; c <= r; c++) {
                 const shiftX = r * d0.x + c * d1.x;
@@ -540,7 +632,8 @@ class KrinkleGenerator {
                     stroke: '#888',
                     meta: {
                         r, c,
-                        hasShortPeriod: basePoly.meta.hasShortPeriod
+                        hasShortPeriod: basePoly.meta.hasShortPeriod,
+                        tileIndex: tileIndex++
                     }
                 });
             }
@@ -753,12 +846,20 @@ document.addEventListener('DOMContentLoaded', () => {
     const inputM = document.getElementById('param-a');
     const inputT = document.getElementById('param-t') || document.getElementById('param-b');
     const inputOffset = document.getElementById('param-offset');
-    const inputC = document.getElementById('param-c');
 
     // New UI Elements
     const inputMode = document.getElementById('display-mode');
     const inputRows = document.getElementById('param-rows');
     const groupRows = document.getElementById('group-rows');
+
+    // Toggles
+    const toggleEdgesContainer = document.getElementById('toggle-edges-container');
+    const toggleWedgesContainer = document.getElementById('toggle-wedges-container');
+    const toggleTilesContainer = document.getElementById('toggle-tiles-container');
+
+    const inputShowEdges = document.getElementById('show-edges');
+    const inputShowWedges = document.getElementById('show-wedges');
+    const inputShowTiles = document.getElementById('show-tiles');
 
     if (!inputK || !inputM || !inputT) {
         console.error("Critical Error: Missing UI inputs.", { inputK, inputM, inputT });
@@ -767,11 +868,6 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
     }
 
-    // Disable unused parameter C
-    if (inputC) {
-        inputC.parentElement.style.opacity = '0.5';
-        inputC.disabled = true;
-    }
 
     const statusText = document.getElementById('status-text');
 
@@ -789,6 +885,21 @@ document.addEventListener('DOMContentLoaded', () => {
         if (groupRows) {
             groupRows.style.display = (mode === 'wedge' || mode === 'tiling') ? 'block' : 'none';
         }
+
+        // Toggle Visibility Options based on Mode
+        // Prototile: Edges
+        // Wedge: Tiles
+        // Tiling: Wedges, Tiles
+        if (toggleEdgesContainer) toggleEdgesContainer.style.display = (mode === 'prototile') ? 'block' : 'none';
+        if (toggleWedgesContainer) toggleWedgesContainer.style.display = (mode === 'tiling') ? 'block' : 'none';
+        if (toggleTilesContainer) toggleTilesContainer.style.display = (mode === 'wedge' || mode === 'tiling') ? 'block' : 'none';
+
+        // Set Renderer Options
+        renderer.setOptions({
+            showEdges: inputShowEdges ? inputShowEdges.checked : true,
+            showWedges: inputShowWedges ? inputShowWedges.checked : true,
+            showTiles: inputShowTiles ? inputShowTiles.checked : true
+        });
 
         // Calculate n based on t and offset mode
         let n;
@@ -859,7 +970,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Add real-time updates for inputs
-    const inputs = [inputK, inputM, inputT, inputOffset, inputMode, inputRows];
+    const inputs = [inputK, inputM, inputT, inputOffset, inputMode, inputRows, inputShowEdges, inputShowWedges, inputShowTiles];
     inputs.forEach(input => {
         if (input) {
             input.addEventListener('input', updateTiling);
