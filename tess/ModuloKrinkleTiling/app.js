@@ -213,23 +213,6 @@ class Renderer {
                     this.ctx.fillText(i.toString(), midX, midY);
                 }
 
-                // 2. Start Point (Red Circle)
-                const start = poly.path[0];
-                this.ctx.beginPath();
-                this.ctx.arc(start.x, start.y, 6 / this.scale, 0, Math.PI * 2);
-                this.ctx.fillStyle = '#ff4d4d'; // Red
-                this.ctx.fill();
-                this.ctx.strokeStyle = '#ffffff';
-                this.ctx.lineWidth = 1 / this.scale;
-                this.ctx.stroke();
-
-                // 3. End Point (Blue Circle)
-                const end = poly.path[poly.path.length - 1];
-                this.ctx.beginPath();
-                this.ctx.arc(end.x, end.y, 6 / this.scale, 0, Math.PI * 2);
-                this.ctx.fillStyle = '#4d94ff'; // Blue
-                this.ctx.fill();
-                this.ctx.stroke();
             });
         }
 
@@ -253,6 +236,7 @@ class KrinkleGenerator {
      */
     generatePrototile(m, k, n) {
         console.log(`Generating Prototile with m=${m}, k=${k}, n=${n}`);
+        let hasShortPeriod = false;
         this.polygons = [];
 
         if (n < k) {
@@ -263,8 +247,9 @@ class KrinkleGenerator {
         // l_seq: [(j * m) % k for j in range(k)] + [k]
         const l_seq = [];
         for (let j = 0; j < k; j++) {
-            if (j>0 && ((j * m) % k)==0) {
-              break;
+            if (j > 0 && ((j * m) % k) == 0) {
+                hasShortPeriod = true;
+                break;
             }
             l_seq.push((j * m) % k);
         }
@@ -273,8 +258,9 @@ class KrinkleGenerator {
         // u_seq: [k] + [(j * m) % k for j in range(1, k)] + [0]
         const u_seq = [k];
         for (let j = 1; j < k; j++) {
-            if (((j * m) % k)==0) {
-              break;
+            if (((j * m) % k) == 0) {
+                hasShortPeriod = true;
+                break;
             }
             u_seq.push((j * m) % k);
         }
@@ -298,7 +284,6 @@ class KrinkleGenerator {
         for (let d of l_seq) {
             const v = getVector(d);
             current = { x: current.x + v.x, y: current.y + v.y };
-            console.log(`DEBUG: ${d} ${current}`);
             path.push(current);
         }
 
@@ -313,7 +298,6 @@ class KrinkleGenerator {
         for (let d of u_seq_rev) {
             const v = getVector(d);
             current = { x: current.x - v.x, y: current.y - v.y };
-            console.log(`DEBUG: rev ${d} ${current}`);
             path.push(current);
         }
 
@@ -325,7 +309,7 @@ class KrinkleGenerator {
             path: path,
             color: 'rgba(88, 166, 255, 0.4)',
             stroke: '#58a6ff',
-            meta: { closureError }
+            meta: { closureError, hasShortPeriod }
         });
 
         return this.polygons;
@@ -402,9 +386,14 @@ document.addEventListener('DOMContentLoaded', () => {
             if (polygons.length > 0) {
                 renderer.autoCenter(polygons[0]);
             }
+            statusText.textContent = `(m, k, n) = (${m}, ${k}, ${n})`;
 
-            const error = polygons[0]?.meta?.closureError || 0;
-            statusText.textContent = `(m, k, n) = (${m}, ${k}, ${n}) | Closure Error: ${error.toFixed(2)}`;
+            const hasShortPeriod = polygons[0]?.meta?.hasShortPeriod || false;
+            if (hasShortPeriod) {
+                statusText.style.color = "#ff6b6b";
+            } else {
+                statusText.style.color = "#8b949e";
+            }
         }, 10);
     }
 
