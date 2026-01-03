@@ -1,64 +1,64 @@
-# Modulo Krinkle Tiling Editor Implementation Plan
+# Modulo Krinkle Tiling エディタ 実装計画
 
-This plan outlines the development of a web-based editor for Modulo Krinkle Tilings, based on the research paper "Modulo Krinkle Tiling". The editor will allow users to explore and manipulate these non-periodic tilings using a modern, interactive interface.
+本計画は、論文 "Modulo Krinkle Tiling" に基づくWebベースのエディタ開発の概要です。このエディタにより、ユーザーはモダンでインタラクティブなインターフェースを使用して、これらの非周期的なタイリングを探索および操作できるようになります。
 
-## User Review Required
+## ユーザーレビューが必要な事項
 
 > [!IMPORTANT]
-> **Directory Name**: I noticed an existing empty directory named `tess/ModuloKrinkleTiling.` (with a trailing dot). I plan to create a new directory `tess/ModuloKrinkleTiling` (no trailing dot) as per your request. Please confirm if this is correct.
+> **ディレクトリ名**: 既存の空ディレクトリ `tess/ModuloKrinkleTiling.`（末尾にドットあり）を確認しました。リクエスト通り、新しいディレクトリ `tess/ModuloKrinkleTiling`（末尾ドットなし）を作成する計画です。これが正しいか確認してください。
 
 > [!NOTE]
-> **Tiling Logic**: The exact mathematical formulas for the "remainder sequences" and prototile construction are not fully detailed in the derived summaries. I will implement the *structure* for the logic (inputs, coordinate generation, rendering), but I may need your specific guidance or pseudo-code to implement the exact `Krinkle` algorithm correctly.
+> **タイリングロジック**: 論文の要約からは、"remainder sequences"（余剰数列）やプロトタイル構築の正確な数式が完全には詳述されていません。ロジックの*構造*（入力、座標生成、レンダリング）は実装しますが、正確な `Krinkle` アルゴリズムを実装するには、具体的なガイダンスや疑似コードが必要になる場合があります。
 
-## Proposed Changes
+## 提案される変更
 
-### Directory Structure
-Target Directory: `tess/ModuloKrinkleTiling/`
+### ディレクトリ構造
+ターゲットディレクトリ: `tess/ModuloKrinkleTiling/`
 
-- `index.html`: Main entry point.
-- `style.css`: Styling updates for a premium, dark-mode aesthetic.
+- `index.html`: メインのエントリポイント。
+- `style.css`: プレミアムなダークモードの美学に向けたスタイルの更新。
 - `src/`:
-    - `main.js`: Application bootstrapping and event handling.
-    - `renderer.js`: Canvas 2D rendering logic (pan, zoom, drawing).
-    - `krinkle.js`: Core logic for generating the tiling geometry from parameters.
+    - `main.js`: アプリケーションの起動とイベント処理。
+    - `renderer.js`: Canvas 2D レンダリングロジック（パン、ズーム、描画）。
+    - `krinkle.js`: パラメータからタイリングジオメトリを生成するコアロジック。
 
-### 1. Project Setup
+### 1. プロジェクトセットアップ
 #### [NEW] [index.html](file:///Users/buchio/Source/github.com/buchio/js-feasibility/tess/ModuloKrinkleTiling/index.html)
-- Setup basic HTML5 structure.
-- Link CSS and JS modules.
-- layout: Full-screen canvas with a floating control panel.
+- 基本的なHTML5構造のセットアップ。
+- CSSおよびJSモジュールのリンク。
+- レイアウト: フローティングコントロールパネルを備えた全画面キャンバス。
 
 #### [NEW] [style.css](file:///Users/buchio/Source/github.com/buchio/js-feasibility/tess/ModuloKrinkleTiling/style.css)
-- **Theme**: Dark mode, vibrant accent colors.
-- **UI Elements**: Glassmorphism for the control panel (translucent background, blur effect).
-- **Typography**: Inter or system fonts for a clean look.
+- **テーマ**: ダークモード、鮮やかなアクセントカラー。
+- **UI要素**: コントロールパネルのグラスモーフィズム（半透明の背景、ぼかし効果）。
+- **タイポグラフィ**: クリーンな外観のためのInterまたはシステムフォント。
 
-### 2. Core Application Logic
+### 2. コアアプリケーションロジック
 #### [NEW] [main.js](file:///Users/buchio/Source/github.com/buchio/js-feasibility/tess/ModuloKrinkleTiling/src/main.js)
-- Handle user input from the control panel.
-- Manage application state (parameters `a`, `b`, `c`, etc.).
-- Coordinate updates between the Logic and Renderer.
+- コントロールパネルからのユーザー入力を処理。
+- アプリケーションの状態（パラメータ `a`, `b`, `c` など）を管理。
+- ロジックとレンダラー間の更新を調整。
 
 #### [NEW] [renderer.js](file:///Users/buchio/Source/github.com/buchio/js-feasibility/tess/ModuloKrinkleTiling/src/renderer.js)
-- Implement a responsive Canvas context.
-- Features:
-    - Infinite canvas panning and zooming.
-    - High-DPI support.
-    - Efficient path drawing.
+- レスポンシブなCanvasコンテキストの実装。
+- 機能:
+    - 無限のキャンバスパンとズーム。
+    - 高DPIサポート。
+    - 効率的なパス描画。
 
 #### [NEW] [krinkle.js](file:///Users/buchio/Source/github.com/buchio/js-feasibility/tess/ModuloKrinkleTiling/src/krinkle.js)
-- **Responsibility**: Generate tiling geometry.
-- **Inputs**: Integer parameters (e.g., A, B, C, Modulo).
-- **Outputs**: List of polygons/paths to draw.
-- **Placeholder Implementation**: Initially generate a simple parametric pattern if exact formulas are unavailable, structured to be easily replaced with the correct algorithm.
+- **責任**: タイリングジオメトリの生成。
+- **入力**: 整数パラメータ（例：A, B, C, Modulo）。
+- **出力**: 描画するポリゴン/パスのリスト。
+- **プレースホルダー実装**: 正確な数式が利用できない場合、最初は単純なパラメトリックパターンを生成し、正しいアルゴリズムと簡単に置き換えられるように構造化します。
 
-## Verification Plan
+## 検証計画
 
-### Automated Tests
-- None planned for this visual prototype phase.
+### 自動テスト
+- このビジュアルプロトタイプフェーズでは計画されていません。
 
-### Manual Verification
-1. **Visual Inspection**: Open `index.html` in a browser.
-2. **UI Interaction**: Verify that changing parameters in the panel updates the canvas.
-3. **UX Check**: Ensure panning and zooming work smoothly.
-4. **Aesthetics**: Verify the dark mode and glassmorphism look premium.
+### 手動検証
+1. **目視検査**: ブラウザで `index.html` を開きます。
+2. **UIインタラクション**: パネルのパラメータを変更してキャンバスが更新されることを確認します。
+3. **UXチェック**: パンとズームがスムーズに機能することを確認します。
+4. **美学**: ダークモードとグラスモーフィズムがプレミアムに見えることを確認します。
