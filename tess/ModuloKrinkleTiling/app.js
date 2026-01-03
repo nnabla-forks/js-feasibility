@@ -330,7 +330,7 @@ class Renderer {
             this.ctx.restore();
         }
 
-        // 3. Depth Overlay (Tiling Mode - Red 70%)
+        // 3. Depth Overlay (Tiling Mode)
         if (this.mode === 'tiling' && this.hoveredDepth !== null && this.polygons) {
             this.ctx.save();
             this.ctx.translate(this.offsetX, this.offsetY);
@@ -361,7 +361,7 @@ class Renderer {
         this.ctx.scale(this.scale, this.scale);
 
         this.ctx.fillStyle = '#ffffff';
-        this.ctx.font = `bold ${16 / this.scale}px sans-serif`;
+        this.ctx.font = `bold ${18 / this.scale}px sans-serif`;
         this.ctx.textAlign = 'center';
         this.ctx.textBaseline = 'middle';
 
@@ -372,7 +372,7 @@ class Renderer {
                 // Simple shadow for readability
                 this.ctx.shadowColor = "black";
                 this.ctx.shadowBlur = 4;
-                this.ctx.fillStyle = '#ffffff';
+                this.ctx.fillStyle = '#aaffee';
                 this.ctx.fillText(idx, center.x, center.y);
                 this.ctx.shadowBlur = 0;
             }
