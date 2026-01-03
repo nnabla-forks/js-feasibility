@@ -7,5 +7,6 @@
 - [x] Verify Prototile closure and shape <!-- id: 4 -->
 
 ## Phase 2: Tiling Logic (Future) <!-- id: 5 -->
-- [ ] Implement Wedge placement <!-- id: 6 -->
-- [ ] Implement Front tracking <!-- id: 7 -->
+## Phase 2: Tiling Logic (Web App) <!-- id: 5 -->
+- [x] Implement Wedge placement (Wedge Mode) <!-- id: 6 -->
+- [x] Implement Front Checking / Full Tiling (including Offset Mode fix) <!-- id: 7 -->

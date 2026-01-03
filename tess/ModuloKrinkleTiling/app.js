@@ -422,14 +422,18 @@ class KrinkleGenerator {
      * @param {number} m 
      * @param {number} k 
      * @param {number} n 
+     * @param {number} n 
      * @param {number} rows - Reuse 'rows' as 'w_limit'
+     * @param {boolean} isOffset - Whether offset mode is active
      */
-    generateTiling(m, k, n, rows) {
-        // usually rows is not relevant for full tiling, we tile "n" wedges
-        // but let's use rows as the limit if provided, else n
-        // Actually, Python script sets w_limit = n.
-        const w_limit = n;
-        console.log(`Generating Tiling with m=${m}, k=${k}, n=${n}, w_limit=${w_limit}`);
+    generateTiling(m, k, n, rows, isOffset) {
+        // Offset Logic:
+        // - No Offset: w_limit = n (fills circle)
+        // - Offset: w_limit = n / 2. Then copy & rotate 180 deg around pivot.
+
+        let w_limit = isOffset ? (n / 2) : n;
+
+        console.log(`Generating Tiling with m=${m}, k=${k}, n=${n}, isOffset=${isOffset}, w_limit=${w_limit}`);
 
 
         // 1. Generate Base Wedges (Wedge 0)
@@ -561,6 +565,39 @@ class KrinkleGenerator {
             console.log(`Updated front at ${j_star} to ${i + k}:`, front_directions);
         }
 
+        // 3. (OFFSET MODE ONLY) 180-degree Rotation Copy
+        if (isOffset) {
+            console.log("Offset Mode: Applying 180-degree rotation copy...");
+            // Pivot is the midpoint of the first edge of the first wedge (Wedge 0).
+            // Wedge 0 starts at (0,0). First edge is direction 0.
+            const v0 = getVector(0);
+            const pivot = { x: v0.x / 2, y: v0.y / 2 };
+
+            console.log("Pivot:", pivot);
+
+            const initialCount = this.polygons.length;
+            // Clone current polygons
+            const currentPolys = JSON.parse(JSON.stringify(this.polygons));
+
+            currentPolys.forEach(p => {
+                // Rotate 180 around pivot
+                // x' = 2*px - x
+                // y' = 2*py - y
+                const newPath = p.path.map(pt => ({
+                    x: 2 * pivot.x - pt.x,
+                    y: 2 * pivot.y - pt.y
+                }));
+
+                this.polygons.push({
+                    path: newPath,
+                    color: p.color,
+                    stroke: p.stroke,
+                    meta: { ...p.meta, isCopy: true }
+                });
+            });
+            console.log(`Added ${this.polygons.length - initialCount} polygons via rotation.`);
+        }
+
         return this.polygons;
     }
 }
@@ -653,7 +690,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 } else if (mode === 'tiling') {
                     if (typeof generator.generateTiling === 'function') {
-                        polygons = generator.generateTiling(m, k, n, rows);
+                        polygons = generator.generateTiling(m, k, n, rows, isOffset);
                     } else {
                         throw new Error("generateTiling method missing");
                     }
