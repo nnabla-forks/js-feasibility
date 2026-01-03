@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modulo Krinkle Tiling Editor</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div id="app">
+        <canvas id="tiling-canvas"></canvas>
+        
+        <aside class="control-panel">
+            <header>
+                <h1>Modulo Krinkle</h1>
+                <p>Tiling Editor</p>
+            </header>
+            
+            <div class="controls">
+                <div class="control-group">
+                    <label for="param-mod">Modulo (M)</label>
+                    <input type="number" id="param-mod" value="7" min="3" step="1">
+                </div>
+                
+                <div class="control-group">
+                    <label for="param-a">Parameter A</label>
+                    <input type="number" id="param-a" value="2" step="1">
+                </div>
+
+                <div class="control-group">
+                    <label for="param-b">Parameter B</label>
+                    <input type="number" id="param-b" value="3" step="1">
+                </div>
+
+                <div class="control-group">
+                    <label for="param-c">Parameter C</label>
+                    <input type="number" id="param-c" value="1" step="1">
+                </div>
+                
+                <button id="btn-update">Update Tiling</button>
+            </div>
+
+            <div class="status-bar">
+                <span id="status-text">Ready</span>
+            </div>
+        </aside>
+    </div>
+    <script type="module" src="src/main.js"></script>
+</body>
+</html>
