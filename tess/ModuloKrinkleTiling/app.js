@@ -78,27 +78,37 @@ class Renderer {
         this.draw();
     }
 
-    setDisplayData(polygons) {
+    setDisplayData(polygons, mode = 'prototile') {
         this.polygons = polygons;
+        this.mode = mode;
         this.draw();
     }
 
     /**
-     * Centers the view on a specific polygon.
-     * @param {Object} polygon 
+     * Centers the view on a collection of polygons.
+     * @param {Array|Object} polygons - Array of polygons or single polygon
      */
-    autoCenter(polygon) {
-        if (!polygon || !polygon.path || polygon.path.length === 0) return;
+    autoCenter(polygons) {
+        if (!polygons) return;
+        const polyList = Array.isArray(polygons) ? polygons : [polygons];
+        if (polyList.length === 0) return;
 
         let minX = Infinity, minY = Infinity;
         let maxX = -Infinity, maxY = -Infinity;
+        let hasPoints = false;
 
-        polygon.path.forEach(p => {
-            if (p.x < minX) minX = p.x;
-            if (p.x > maxX) maxX = p.x;
-            if (p.y < minY) minY = p.y;
-            if (p.y > maxY) maxY = p.y;
+        polyList.forEach(poly => {
+            if (!poly.path || poly.path.length === 0) return;
+            poly.path.forEach(p => {
+                if (p.x < minX) minX = p.x;
+                if (p.x > maxX) maxX = p.x;
+                if (p.y < minY) minY = p.y;
+                if (p.y > maxY) maxY = p.y;
+                hasPoints = true;
+            });
         });
+
+        if (!hasPoints) return;
 
         const width = maxX - minX;
         const height = maxY - minY;
@@ -119,10 +129,6 @@ class Renderer {
         const cy = (minY + maxY) / 2;
 
         // Reset offset to center the polygon in the middle of the screen
-        // Transformation: ScreenX = (WorldX * scale) + offsetX
-        // We want ScreenX = CanvasWidth/2 when WorldX = cx
-        // CanvasWidth/2 = (cx * scale) + offsetX
-        // offsetX = CanvasWidth/2 - (cx * scale)
         this.offsetX = (this.canvas.width / 2) - (cx * this.scale);
         this.offsetY = (this.canvas.height / 2) - (cy * this.scale);
 
@@ -195,22 +201,22 @@ class Renderer {
             this.polygons.forEach(poly => {
                 if (!poly.path || poly.path.length === 0) return;
 
-                // 1. Edge Indices
-                this.ctx.fillStyle = '#ffffff';
-                this.ctx.font = `${14 / this.scale}px sans-serif`;
-                this.ctx.textAlign = 'center';
-                this.ctx.textBaseline = 'middle';
+                // 1. Edge Indices (Only in Prototile Mode)
+                if (this.mode === 'prototile') {
+                    this.ctx.fillStyle = '#ffffff';
+                    this.ctx.font = `${14 / this.scale}px sans-serif`;
+                    this.ctx.textAlign = 'center';
+                    this.ctx.textBaseline = 'middle';
 
-                for (let i = 0; i < poly.path.length - 1; i++) {
-                    const p1 = poly.path[i];
-                    const p2 = poly.path[i + 1];
+                    for (let i = 0; i < poly.path.length - 1; i++) {
+                        const p1 = poly.path[i];
+                        const p2 = poly.path[i + 1];
 
-                    const midX = (p1.x + p2.x) / 2;
-                    const midY = (p1.y + p2.y) / 2;
+                        const midX = (p1.x + p2.x) / 2;
+                        const midY = (p1.y + p2.y) / 2;
 
-                    // Offset text slightly perpendicular to edge?
-                    // For now, just draw at midpoint
-                    this.ctx.fillText(i.toString(), midX, midY);
+                        this.ctx.fillText(i.toString(), midX, midY);
+                    }
                 }
 
             });
@@ -314,6 +320,249 @@ class KrinkleGenerator {
 
         return this.polygons;
     }
+
+    /**
+     * Generates a Wedge (Triangular arrangement of prototiles).
+     * @param {number} m 
+     * @param {number} k 
+     * @param {number} n 
+     * @param {number} rows - Number of rows (depth)
+     */
+    generateWedge(m, k, n, rows) {
+        console.log(`Generating Wedge with m=${m}, k=${k}, n=${n}, rows=${rows}`);
+        // First, generate the prototile to get sequences and base path
+        const basePolygons = this.generatePrototile(m, k, n);
+        const basePoly = basePolygons[0];
+
+        // If error or empty
+        if (!basePoly || basePoly.path.length === 0) {
+            return basePolygons;
+        }
+
+        // Helper: Direction to Vector
+        const getVector = (dirIndex) => {
+            const angle = (dirIndex * 2 * Math.PI) / n;
+            const len = 100;
+            return {
+                x: Math.cos(angle) * len,
+                y: Math.sin(angle) * len
+            };
+        };
+
+        const l_seq = [];
+        for (let j = 0; j < k; j++) {
+            if (j > 0 && ((j * m) % k) == 0) {
+                break;
+            }
+            l_seq.push((j * m) % k);
+        }
+        l_seq.push(k);
+
+        // Calculate d0 (Vector sum of l_seq - excluding the last element 'k')
+        // Python: sum(get_v((j * m) % k) for j in range(k))
+        let d0 = { x: 0, y: 0 };
+        // l_seq has k+1 elements (the last one is k). We iterate 0 to k-1.
+        for (let j = 0; j < k; j++) {
+            if (j > 0 && ((j * m) % k) == 0) {
+                break;
+            }
+            const v = getVector(l_seq[j]);
+            d0.x += v.x;
+            d0.y += v.y;
+        }
+
+        // Calculate d1 (v_k - v_0)
+        const vk = getVector(k);
+        const v0 = getVector(0);
+        const d1 = {
+            x: vk.x - v0.x,
+            y: vk.y - v0.y
+        };
+
+        // Clear and rebuild for Wedge
+        this.polygons = [];
+
+        // Colors
+        const colors = [
+            'rgba(88, 166, 255, 0.6)',
+            'rgba(255, 100, 100, 0.6)',
+            'rgba(100, 200, 100, 0.6)'
+        ];
+
+        for (let r = 0; r < rows; r++) {
+            for (let c = 0; c <= r; c++) {
+                const shiftX = r * d0.x + c * d1.x;
+                const shiftY = r * d0.y + c * d1.y;
+
+                // Clone path with shift
+                const newPath = basePoly.path.map(p => ({
+                    x: p.x + shiftX,
+                    y: p.y + shiftY
+                }));
+
+                const colorIdx = (r + c) % 3;
+
+                this.polygons.push({
+                    path: newPath,
+                    color: colors[colorIdx],
+                    stroke: '#888',
+                    meta: {
+                        r, c,
+                        hasShortPeriod: basePoly.meta.hasShortPeriod
+                    }
+                });
+            }
+        }
+
+        return this.polygons;
+    }
+
+    /**
+     * Generates a Full Tiling (Front Checking).
+     * @param {number} m 
+     * @param {number} k 
+     * @param {number} n 
+     * @param {number} rows - Reuse 'rows' as 'w_limit'
+     */
+    generateTiling(m, k, n, rows) {
+        // usually rows is not relevant for full tiling, we tile "n" wedges
+        // but let's use rows as the limit if provided, else n
+        // Actually, Python script sets w_limit = n.
+        const w_limit = n;
+        console.log(`Generating Tiling with m=${m}, k=${k}, n=${n}, w_limit=${w_limit}`);
+
+
+        // 1. Generate Base Wedges (Wedge 0)
+        // We reuse logic but we need to know u_seq
+        // Let's copy relevant logic from generatePrototile to get u_seq and path
+
+        let hasShortPeriod = false;
+
+        // u_seq generation
+        const u_seq = [k];
+        for (let j = 1; j < k; j++) {
+            if (((j * m) % k) == 0) {
+                hasShortPeriod = true;
+                break;
+            }
+            u_seq.push((j * m) % k);
+        }
+        u_seq.push(0);
+
+        // helper
+        const getVector = (dirIndex) => {
+            const angle = (dirIndex * 2 * Math.PI) / n;
+            const len = 100;
+            return {
+                x: Math.cos(angle) * len,
+                y: Math.sin(angle) * len
+            };
+        };
+
+        // We need 'd0' and 'd1' for the internal wedge structure if we were drawing individual tiles
+        // But here we are placing "Wedges" (groups of tiles).
+        // Wait, Python script places *entire wedges*?
+        // Ah, Step 1 in Python generates "Wedge 0" which consists of many tiles.
+        // Step 2 places *copies* of Wedge 0.
+        // So we need to call generateWedge(..., rows) to get the base group of tiles.
+
+        // Let's generate Wedge 0 first.
+        const wedge0Polys = this.generateWedge(m, k, n, rows);
+        if (!wedge0Polys || wedge0Polys.length === 0) return [];
+
+        // This clears this.polygons, so we should save it.
+        const baseWedge = [...wedge0Polys];
+
+        // Initialize Result
+        this.polygons = []; // clear global list to fill with all wedges
+
+        // Front Initialization
+        // Python: front_directions = list(u_seq[:-1])
+        const front_directions = u_seq.slice(0, u_seq.length - 1);
+
+        // Constants
+        const unit_angle = (2 * Math.PI) / n;
+        const wedge_offsets = [];
+        for (let i = 0; i < w_limit; i++) wedge_offsets.push(i % 3);
+
+        // Helper to clone and transform a polygon
+        const addTransformedWedge = (polys, offsetX, offsetY, rotationIndex, colorOffset) => {
+            const rotAngle = rotationIndex * unit_angle;
+            const flowColors = [
+                'rgba(88, 166, 255, 0.6)',
+                'rgba(255, 100, 100, 0.6)',
+                'rgba(100, 200, 100, 0.6)'
+            ];
+
+            polys.forEach(p => {
+                // Rotate then Translate
+                // x' = x*cos - y*sin + tx
+                // y' = x*sin + y*cos + ty
+                const cos = Math.cos(rotAngle);
+                const sin = Math.sin(rotAngle);
+
+                const newPath = p.path.map(pt => ({
+                    x: (pt.x * cos - pt.y * sin) + offsetX,
+                    y: (pt.x * sin + pt.y * cos) + offsetY
+                }));
+
+                // Calculate color
+                // Original was (r+c)%3. We add wedge offset.
+                // We need to recover original r,c or just rotate color
+                // p.meta has r, c
+                const r = p.meta.r || 0;
+                const c = p.meta.c || 0;
+                const cIdx = (r + c + colorOffset) % 3;
+
+                this.polygons.push({
+                    path: newPath,
+                    color: flowColors[cIdx],
+                    stroke: '#888',
+                    meta: p.meta
+                });
+            });
+        };
+
+        // Add Wedge 0 (at origin, rotation 0)
+        addTransformedWedge(baseWedge, 0, 0, 0, wedge_offsets[0]);
+
+        // Loop i from 1 to w_limit-1
+        console.log(`Starting loop for ${w_limit} wedges. Front:`, front_directions);
+        for (let i = 1; i < w_limit; i++) {
+            // Find j_star where front_directions[j] == i
+            let j_star = -1;
+            for (let idx = 0; idx < front_directions.length; idx++) {
+                if (front_directions[idx] == i) {
+                    j_star = idx;
+                    break;
+                }
+            }
+
+            console.log(`Wedge ${i}: Found j_star=${j_star} in front ` + JSON.stringify(front_directions));
+
+            if (j_star === -1) {
+                console.warn(`Warning: direction ${i} not found in front for wedge ${i}`);
+                continue;
+            }
+
+            // Calculate start_pos (sum of vectors up to j_star)
+            let startX = 0, startY = 0;
+            for (let idx = 0; idx < j_star; idx++) {
+                const v = getVector(front_directions[idx]);
+                startX += v.x;
+                startY += v.y;
+            }
+
+            // Add transformed wedge
+            addTransformedWedge(baseWedge, startX, startY, i, wedge_offsets[i]);
+
+            // Update front
+            front_directions[j_star] = i + k;
+            console.log(`Updated front at ${j_star} to ${i + k}:`, front_directions);
+        }
+
+        return this.polygons;
+    }
 }
 
 // ==========================================
@@ -337,6 +586,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const inputOffset = document.getElementById('param-offset');
     const inputC = document.getElementById('param-c');
 
+    // New UI Elements
+    const inputMode = document.getElementById('display-mode');
+    const inputRows = document.getElementById('param-rows');
+    const groupRows = document.getElementById('group-rows');
+
     if (!inputK || !inputM || !inputT) {
         console.error("Critical Error: Missing UI inputs.", { inputK, inputM, inputT });
         const statusText = document.getElementById('status-text');
@@ -358,6 +612,15 @@ document.addEventListener('DOMContentLoaded', () => {
         const t = parseInt(inputT.value, 10);
         const isOffset = inputOffset ? inputOffset.checked : false;
 
+        // Wedge Mode params
+        const mode = inputMode ? inputMode.value : 'prototile';
+        const rows = inputRows ? parseInt(inputRows.value, 10) : 5;
+
+        // Toggle UI visibility
+        if (groupRows) {
+            groupRows.style.display = (mode === 'wedge' || mode === 'tiling') ? 'block' : 'none';
+        }
+
         // Calculate n based on t and offset mode
         let n;
         if (!isOffset) {
@@ -375,18 +638,47 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         statusText.style.color = "#8b949e";
-        statusText.textContent = "Generating Prototile...";
+        statusText.textContent = (mode === 'wedge') ? "Generating Wedge..." : "Generating Prototile...";
 
-        // Use setTimeout to allow UI to update before heavy calculation (though this is light)
+        // Use setTimeout to allow UI to update before heavy calculation
         setTimeout(() => {
-            const polygons = generator.generatePrototile(m, k, n);
-            renderer.setDisplayData(polygons);
+            let polygons = [];
 
-            // Auto-center on the first polygon
-            if (polygons.length > 0) {
-                renderer.autoCenter(polygons[0]);
+            try {
+                if (mode === 'wedge') {
+                    if (typeof generator.generateWedge === 'function') {
+                        polygons = generator.generateWedge(m, k, n, rows);
+                    } else {
+                        throw new Error("generateWedge method missing");
+                    }
+                } else if (mode === 'tiling') {
+                    if (typeof generator.generateTiling === 'function') {
+                        polygons = generator.generateTiling(m, k, n, rows);
+                    } else {
+                        throw new Error("generateTiling method missing");
+                    }
+                } else {
+                    polygons = generator.generatePrototile(m, k, n);
+                }
+            } catch (e) {
+                console.error("Generation failed:", e);
+                statusText.textContent = "Error: " + e.message;
+                statusText.style.color = "#ff6b6b";
+                return;
             }
-            statusText.textContent = `(m, k, n) = (${m}, ${k}, ${n})`;
+
+            if (!polygons) {
+                console.error("Generator returned undefined");
+                polygons = [];
+            }
+
+            renderer.setDisplayData(polygons, mode);
+
+            // Auto-center on all polygons
+            if (polygons.length > 0) {
+                renderer.autoCenter(polygons);
+            }
+            statusText.textContent = `(m, k, n) = (${m}, ${k}, ${n}) [${mode}]`;
 
             const hasShortPeriod = polygons[0]?.meta?.hasShortPeriod || false;
             if (hasShortPeriod) {
@@ -398,9 +690,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Add real-time updates for inputs
-    [inputK, inputM, inputT, inputOffset].forEach(input => {
+    const inputs = [inputK, inputM, inputT, inputOffset, inputMode, inputRows];
+    inputs.forEach(input => {
         if (input) {
             input.addEventListener('input', updateTiling);
+            input.addEventListener('change', updateTiling);
         }
     });
 

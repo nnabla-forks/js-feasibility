@@ -37,3 +37,34 @@
 ## 検証方法
 - $k=7, m=3, n=14$ 等のパラメータで実行し、図形が閉じているか（始点＝終点）を確認する。
 - 論文の図2（Figure 2）と比較する。
+
+# Phase 2: Wedge Mode Implementation
+
+## Goal
+Enable "Wedge Mode" to visualize how prototiles are assembled into a wedge-shaped region, as described in Section 4 of the paper.
+
+## UI Changes
+- Add **Mode Selector**: [Prototile, Wedge].
+- Add **Wedge Depth Input**: Parameter to control how many layers of tiles to generate (e.g., `rows`).
+
+## Logic Changes (`app.js`)
+1. **Renderer Update**: 
+   - Update `autoCenter` to calculate bounding box of *all* polygons, not just the first one.
+   
+2. **Generator Update**:
+   - Implement `generateWedge(m, k, n, rows)`.
+   - Calculate basic vectors:
+     - `d0`: Translation vector for row shift (sum of lower boundary vectors).
+     - `d1`: Translation vector for in-row shift (`v_k - v_0`).
+   - Loop `r` from 0 to `rows-1` and `c` from 0 to `r` (triangular structure).
+   - Calculate position: `pos = r * d0 + c * d1`.
+   - Generate prototile path shifted by `pos`.
+   - Apply 3-coloring logic: `(r + c + offset) % 3` with palette.
+
+3. **Controller Update**:
+   - Handle mode switch.
+   - Pass `rows` parameter.
+
+## Verification
+- Compare simple case (m=3, k=7) with Figure 4 in the paper.
+- Ensure tiles align perfectly without gaps (visual check).
