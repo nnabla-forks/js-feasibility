@@ -89,7 +89,40 @@ class Renderer {
     setDisplayData(polygons, mode = 'prototile') {
         this.polygons = polygons;
         this.mode = mode;
+        this.calculateWedgeCenters();
         this.draw();
+    }
+
+    calculateWedgeCenters() {
+        this.wedgeCenters = {};
+        if (!this.polygons) return;
+
+        const sums = {};
+        const counts = {};
+
+        this.polygons.forEach(poly => {
+            if (poly.meta && typeof poly.meta.wedgeIndex !== 'undefined') {
+                const idx = poly.meta.wedgeIndex;
+                if (!sums[idx]) {
+                    sums[idx] = { x: 0, y: 0 };
+                    counts[idx] = 0;
+                }
+
+                // Use path vertices for centroid
+                poly.path.forEach(p => {
+                    sums[idx].x += p.x;
+                    sums[idx].y += p.y;
+                    counts[idx]++;
+                });
+            }
+        });
+
+        for (const idx in sums) {
+            this.wedgeCenters[idx] = {
+                x: sums[idx].x / counts[idx],
+                y: sums[idx].y / counts[idx]
+            };
+        }
     }
 
     /**
@@ -256,6 +289,31 @@ class Renderer {
 
             this.ctx.restore();
         }
+
+        // 3. Labels
+        this.ctx.save();
+        this.ctx.translate(this.offsetX, this.offsetY);
+        this.ctx.scale(this.scale, this.scale);
+
+        this.ctx.fillStyle = '#ffffff';
+        this.ctx.font = `bold ${16 / this.scale}px sans-serif`;
+        this.ctx.textAlign = 'center';
+        this.ctx.textBaseline = 'middle';
+
+        // Tiling Wedge Indices
+        if (this.mode === 'tiling' && this.wedgeCenters) {
+            for (const idx in this.wedgeCenters) {
+                const center = this.wedgeCenters[idx];
+                // Simple shadow for readability
+                this.ctx.shadowColor = "black";
+                this.ctx.shadowBlur = 4;
+                this.ctx.fillStyle = '#ffffff';
+                this.ctx.fillText(idx, center.x, center.y);
+                this.ctx.shadowBlur = 0;
+            }
+        }
+
+        this.ctx.restore();
     }
 
     handleMouseMove(mx, my) {
@@ -596,7 +654,6 @@ class KrinkleGenerator {
                     path: newPath,
                     color: flowColors[cIdx],
                     stroke: '#888',
-                    stroke: '#888',
                     meta: { ...p.meta, wedgeIndex: rotationIndex }
                 });
             });
@@ -666,7 +723,6 @@ class KrinkleGenerator {
                 this.polygons.push({
                     path: newPath,
                     color: p.color,
-                    stroke: p.stroke,
                     stroke: p.stroke,
                     meta: { ...p.meta, isCopy: true, wedgeIndex: p.meta.wedgeIndex + 10000 } // Offset unique index
                 });
