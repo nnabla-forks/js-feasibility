@@ -23,26 +23,33 @@
 
             <div class="controls">
                 <div class="control-group">
-                    <label for="param-mod">モジュロ (M)</label>
-                    <input type="number" id="param-mod" value="7" min="3" step="1">
-                </div>
-
-                <div class="control-group">
-                    <label for="param-a">パラメータ A</label>
+                    <label for="param-a">m (ステップ)</label>
                     <input type="number" id="param-a" value="2" step="1">
                 </div>
 
                 <div class="control-group">
-                    <label for="param-b">パラメータ B</label>
-                    <input type="number" id="param-b" value="3" step="1">
+                    <label for="param-mod">k (モジュロ)</label>
+                    <input type="number" id="param-mod" value="7" min="3" step="1">
                 </div>
 
                 <div class="control-group">
-                    <label for="param-c">パラメータ C</label>
+                    <label for="param-t">t (周期係数)</label>
+                    <input type="number" id="param-t" value="2" step="1" min="1">
+                </div>
+
+                <div class="control-group checkbox-group">
+                    <label for="param-offset">
+                        <input type="checkbox" id="param-offset">
+                        Offset Mode (n = 2(tk-m))
+                    </label>
+                </div>
+
+                <div class="control-group">
+                    <label for="param-c">C (未使用)</label>
                     <input type="number" id="param-c" value="1" step="1">
                 </div>
 
-                <button id="btn-update">タイリング更新</button>
+
             </div>
 
             <div class="status-bar">
@@ -50,7 +57,7 @@
             </div>
         </aside>
     </div>
-    <script type="module" src="src/main.js"></script>
+    <script src="app.js"></script>
 </body>
 
 </html>

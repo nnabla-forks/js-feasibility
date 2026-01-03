@@ -82,6 +82,47 @@ export class Renderer {
         this.draw();
     }
 
+    /**
+     * Centers the view on a specific polygon.
+     * @param {Object} polygon 
+     */
+    autoCenter(polygon) {
+        if (!polygon || !polygon.path || polygon.path.length === 0) return;
+
+        let minX = Infinity, minY = Infinity;
+        let maxX = -Infinity, maxY = -Infinity;
+
+        polygon.path.forEach(p => {
+            if (p.x < minX) minX = p.x;
+            if (p.x > maxX) maxX = p.x;
+            if (p.y < minY) minY = p.y;
+            if (p.y > maxY) maxY = p.y;
+        });
+
+        const width = maxX - minX;
+        const height = maxY - minY;
+
+        // Add some padding
+        const padding = 50;
+        const targetW = width + padding * 2;
+        const targetH = height + padding * 2;
+
+        const scaleX = this.canvas.width / targetW;
+        const scaleY = this.canvas.height / targetH;
+
+        // Basic fit
+        this.scale = Math.min(scaleX, scaleY, 5.0); // Limit max zoom
+
+        // Center
+        const cx = (minX + maxX) / 2;
+        const cy = (minY + maxY) / 2;
+
+        this.offsetX = (this.canvas.width / 2) - (cx * this.scale);
+        this.offsetY = (this.canvas.height / 2) - (cy * this.scale);
+
+        this.draw();
+    }
+
     draw() {
         if (!this.ctx) return;
 
