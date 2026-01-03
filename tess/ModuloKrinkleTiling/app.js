@@ -23,6 +23,11 @@ class Renderer {
 
         this.initEvents();
         this.resize();
+
+        // Hover state
+        this.hoveredWedgeIndex = null;
+        this.mouseX = 0;
+        this.mouseY = 0;
     }
 
     initEvents() {
@@ -47,6 +52,9 @@ class Renderer {
                 this.lastY = e.clientY;
                 this.draw(); // Redraw on drag
             }
+
+            // Hover check
+            this.handleMouseMove(e.clientX, e.clientY);
         });
 
         window.addEventListener('mouseup', () => {
@@ -223,6 +231,72 @@ class Renderer {
         }
 
         this.ctx.restore();
+
+        // 2. Hover Overlay (Tiling Mode)
+        if (this.mode === 'tiling' && this.hoveredWedgeIndex !== null && this.polygons) {
+            this.ctx.save();
+            this.ctx.translate(this.offsetX, this.offsetY);
+            this.ctx.scale(this.scale, this.scale);
+
+            this.ctx.fillStyle = 'rgba(128, 128, 128, 0.5)';
+
+            this.polygons.forEach(poly => {
+                if (poly.meta && poly.meta.wedgeIndex === this.hoveredWedgeIndex) {
+                    this.ctx.beginPath();
+                    if (poly.path.length > 0) {
+                        this.ctx.moveTo(poly.path[0].x, poly.path[0].y);
+                        for (let i = 1; i < poly.path.length; i++) {
+                            this.ctx.lineTo(poly.path[i].x, poly.path[i].y);
+                        }
+                        this.ctx.closePath();
+                    }
+                    this.ctx.fill();
+                }
+            });
+
+            this.ctx.restore();
+        }
+    }
+
+    handleMouseMove(mx, my) {
+        if (!this.polygons || this.mode !== 'tiling') return;
+
+        // Transform mouse to world coordinates
+        // screenX = worldX * scale + offsetX
+        // worldX = (screenX - offsetX) / scale
+        const worldX = (mx - this.offsetX) / this.scale;
+        const worldY = (my - this.offsetY) / this.scale;
+
+        // Find hovered polygon
+        let foundIndex = null;
+
+        // Iterate in reverse render order (top first) if overlapping, though here tiles shouldn't overlap much
+        for (let i = this.polygons.length - 1; i >= 0; i--) {
+            const poly = this.polygons[i];
+            if (this.isPointInPoly(worldX, worldY, poly.path)) {
+                foundIndex = poly.meta ? poly.meta.wedgeIndex : null;
+                break;
+            }
+        }
+
+        if (this.hoveredWedgeIndex !== foundIndex) {
+            this.hoveredWedgeIndex = foundIndex;
+            this.draw();
+        }
+    }
+
+    isPointInPoly(x, y, path) {
+        // Ray-casting algorithm
+        let inside = false;
+        for (let i = 0, j = path.length - 1; i < path.length; j = i++) {
+            const xi = path[i].x, yi = path[i].y;
+            const xj = path[j].x, yj = path[j].y;
+
+            const intersect = ((yi > y) !== (yj > y)) &&
+                (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+            if (intersect) inside = !inside;
+        }
+        return inside;
     }
 }
 
@@ -522,7 +596,8 @@ class KrinkleGenerator {
                     path: newPath,
                     color: flowColors[cIdx],
                     stroke: '#888',
-                    meta: p.meta
+                    stroke: '#888',
+                    meta: { ...p.meta, wedgeIndex: rotationIndex }
                 });
             });
         };
@@ -592,7 +667,8 @@ class KrinkleGenerator {
                     path: newPath,
                     color: p.color,
                     stroke: p.stroke,
-                    meta: { ...p.meta, isCopy: true }
+                    stroke: p.stroke,
+                    meta: { ...p.meta, isCopy: true, wedgeIndex: p.meta.wedgeIndex + 10000 } // Offset unique index
                 });
             });
             console.log(`Added ${this.polygons.length - initialCount} polygons via rotation.`);
