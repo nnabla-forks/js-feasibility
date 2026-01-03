@@ -263,6 +263,9 @@ class KrinkleGenerator {
         // l_seq: [(j * m) % k for j in range(k)] + [k]
         const l_seq = [];
         for (let j = 0; j < k; j++) {
+            if (j>0 && ((j * m) % k)==0) {
+              break;
+            }
             l_seq.push((j * m) % k);
         }
         l_seq.push(k);
@@ -270,6 +273,9 @@ class KrinkleGenerator {
         // u_seq: [k] + [(j * m) % k for j in range(1, k)] + [0]
         const u_seq = [k];
         for (let j = 1; j < k; j++) {
+            if (((j * m) % k)==0) {
+              break;
+            }
             u_seq.push((j * m) % k);
         }
         u_seq.push(0);
@@ -292,6 +298,7 @@ class KrinkleGenerator {
         for (let d of l_seq) {
             const v = getVector(d);
             current = { x: current.x + v.x, y: current.y + v.y };
+            console.log(`DEBUG: ${d} ${current}`);
             path.push(current);
         }
 
@@ -306,6 +313,7 @@ class KrinkleGenerator {
         for (let d of u_seq_rev) {
             const v = getVector(d);
             current = { x: current.x - v.x, y: current.y - v.y };
+            console.log(`DEBUG: rev ${d} ${current}`);
             path.push(current);
         }
 
